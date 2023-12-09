@@ -1,0 +1,3 @@
+container/venv
+__pycache__
+cdk/lib/vpc-config.ts
