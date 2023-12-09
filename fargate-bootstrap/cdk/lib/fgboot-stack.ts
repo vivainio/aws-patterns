@@ -6,21 +6,30 @@ import { aws_lambda as lambda } from 'aws-cdk-lib';
 import { aws_lambda_event_sources as lambdaEventSources } from 'aws-cdk-lib';
 import { aws_ecs as ecs } from 'aws-cdk-lib';
 import { aws_iam as iam } from 'aws-cdk-lib';
+import {aws_ec2 as ec2} from 'aws-cdk-lib';
 
+// hidden from git, myah myah
+import vpcConfig from './vpc-config';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
+
+
+
+// instantiate like
+// new FgBootStack(app, 'FgbMyAppStack', 'SomeApp' {})
+// resources will be named like SomeAppJobQueue etc
 export class FgBootStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, appNamePrefix: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // should have policy to cycle out "dev" builds?
     // this bucket containst the app builds as .zip files
-    const bucket = new s3.Bucket(this, 'FgBootBucket', {
+    const bucket = new s3.Bucket(this, appNamePrefix + 'Bucket', {
       versioned: true
     })
 
     // put jobs to this queue
-    const jobQueue = new sqs.Queue(this, 'FgBootJobQueue', {
+    const jobQueue = new sqs.Queue(this, appNamePrefix + 'JobQueue', {
       visibilityTimeout: cdk.Duration.minutes(5)
     })
 
@@ -30,7 +39,7 @@ export class FgBootStack extends cdk.Stack {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
-    const launcherLambda = new lambda.Function(this, "FgBootLauncherLambda", {
+    const launcherLambda = new lambda.Function(this, appNamePrefix + "LauncherLambda", {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'index.handler',
       code: lambda.Code.fromAsset("../launcher"),
@@ -44,7 +53,12 @@ export class FgBootStack extends cdk.Stack {
 
     // and then launcher work in fargate cluster
 
-    const cluster = new ecs.Cluster(this, 'FgBootCluster');
+    const vpc = ec2.Vpc.fromVpcAttributes(this, 'ExistingVpc', {
+      vpcId: vpcConfig.vpcId,
+      availabilityZones: ["eu-west-1a"]
+    })
+
+    const cluster = new ecs.Cluster(this, appNamePrefix + 'Cluster', {vpc: vpc});
     const executionRole = new iam.Role(this, 'TaskExecutionRole', {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com")
     })
@@ -57,17 +71,16 @@ export class FgBootStack extends cdk.Stack {
     bucket.grantRead(ecsTaskRole)
 
 
-    const taskDef = new ecs.FargateTaskDefinition(this, 'FgBootTaskDef', {
+    const taskDef = new ecs.FargateTaskDefinition(this, appNamePrefix + 'TaskDef', {
       executionRole: executionRole,
       taskRole: ecsTaskRole
 
     })
 
     // can reuse the same image for all the apps
-    const container = taskDef.addContainer('FgBootContainer', {
+    const container = taskDef.addContainer( appNamePrefix + 'Container', {
       image: ecs.ContainerImage.fromRegistry('fgbootimg')
     })
-
 
 
     // lambda can run it
@@ -78,11 +91,5 @@ export class FgBootStack extends cdk.Stack {
     }))
     launcherLambda.addEnvironment("FGB_TASKDEF_ARN", taskDef.taskDefinitionArn)
 
-    // The code that defines your stack goes here
-
-    // example resource
-    // const queue = new sqs.Queue(this, 'CdkQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
   }
 }
