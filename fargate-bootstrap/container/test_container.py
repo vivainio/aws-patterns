@@ -4,12 +4,13 @@ from supermoto import resources
 import io
 import zipfile
 
+
 def create_zip_in_memory(files):
     # Create an in-memory byte stream
     in_memory_zip = io.BytesIO()
 
     # Create a ZipFile object with the in-memory byte stream
-    with zipfile.ZipFile(in_memory_zip, mode='w') as zipf:
+    with zipfile.ZipFile(in_memory_zip, mode="w") as zipf:
         # Add files to the zip file
         for file_name, file_content in files.items():
             zipf.writestr(file_name, file_content)

@@ -18,6 +18,7 @@ def do_test(args):
     os.chdir("container")
     c("pytest")
 
+
 def do_format(args):
     c("ruff format .")
 
