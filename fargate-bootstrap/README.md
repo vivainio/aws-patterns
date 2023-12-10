@@ -8,8 +8,32 @@ Micro-PaaS where you:
 
 # What's the point?
 
-There is no need to create your own container image. There is a public container image that contains Ubuntu, Python, .NET 8 and the bootstrapper code. Just upload your code to 
-the bucket and go.
+There is no need to create or upload your own container image. There is a public container image that contains Ubuntu, Python, .NET 8 and the bootstrapper code. Just upload your code to the bucket and go.
 
-This is not dissimilar to how you would use AWS CodeBuild, but it's much cheaper.
+This is similar to how you would use AWS CodeBuild, but is much cheaper.
+
+
+# Message format
+
+You need to send the "job" message to sqs or lambda as a payload.
+
+Body must contain the path to application at top level under "fgboot" key:
+
+I
+```json
+
+{
+    "fgboot": {
+        "path": "path/to/app.zip",
+        "batchkey": "somekey"
+    },
+    "otherstuff": [1,2],
+    "evenmorestuff": ["foo", "bar"]
+}
+```
+
+
+The whole payload (including "fgboot", "otherstuff", "evenmorestuff") will be available in FGB_BODY environment variable.
+
+In case of sqs, messages containing the same `batchkey`` will be sent as an array to the same Fargate task, instead of launching individual tasks in parallel. This can lower the cost of quick running tasks with expensive setup (e.g. a big source .zip), or be used as a throttle.
 

@@ -1,9 +1,9 @@
 """ Simple, fast and fun task runner, not unlike gulp / grunt (but zero dep)"""
 import sys
 import subprocess
-import shutil
 import os
 import textwrap
+import json
 
 PACKAGE = "fgboot"
 
@@ -25,7 +25,7 @@ def do_format(args):
 
 def do_deploy(args):
     os.chdir("cdk")
-    c("cdk deploy --profile dev")
+    c("cdk deploy --format=json --profile dev")
 
 
 def do_ecrpush(args):
@@ -34,6 +34,21 @@ def do_ecrpush(args):
     c("docker build -t fgboot .")
     c("docker tag fgboot:latest public.ecr.aws/i4s7m2y3/fgboot:latest")
     c("docker push public.ecr.aws/i4s7m2y3/fgboot:latest")
+
+
+def get_outputs():
+    stacks = cap_json("aws cloudformation describe-stacks --stack-name FgbDemoStack --profile dev")
+    print(stacks)
+
+    outputs = {o["OutputKey"]: o["OutputValue"] for o in stacks["Stacks"][0]["Outputs"]}
+    print(outputs)
+    return outputs
+
+def do_send(args):
+    out = get_outputs()
+
+
+
 
 
 
@@ -53,18 +68,9 @@ def c_spawn(cmd, cwd):
     print(">", cmd)
     subprocess.Popen(cmd, cwd=cwd, shell=True)
 
-
-def copy_files(sources, destinations):
-    """copy each source to each destinatios"""
-    for src in sources:
-        for dest in destinations:
-            src = os.path.abspath(src)
-            dest = os.path.abspath(dest)
-            print("cp %s -> %s" % (src, dest))
-            if not os.path.isdir(dest):
-                print("File not found", dest)
-                continue
-            shutil.copy(src, dest)
+def cap_json(s):
+    print(">",s)
+    return json.loads(os.popen(s).read())
 
 
 def c(cmd):

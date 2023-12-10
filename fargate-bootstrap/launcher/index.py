@@ -9,7 +9,6 @@ def ecs():
 def handler(event, context):
     print("Received event:", event)
 
-    client = ecs()
 
     cluster = os.environ["FGB_CLUSTER_NAME"]
     taskdef = os.environ["FGB_TASKDEF_ARN"]
@@ -30,6 +29,9 @@ def handler(event, context):
             }
         ]
     }
+    
+    client = ecs()
+
     client.run_task(
         cluster=cluster,
         taskDefinition=taskdef,

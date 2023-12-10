@@ -135,5 +135,9 @@ export class FgBootStack extends cdk.Stack {
       value: jobQueue.queueUrl,
       description: "Queue to add the job start requests to"
     })
+
+    new cdk.CfnOutput(this, "InvokeLambda", {
+      value: launcherLambda.functionName
+    })
   }
 }
