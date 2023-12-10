@@ -6,8 +6,9 @@ RUN apt-get update && \
 
 
 WORKDIR /app
-COPY fgboot_launch.py .
 COPY requirements_container.txt .
 RUN python3 -m venv venv
 RUN venv/bin/pip install -r requirements_container.txt
+
+COPY fgboot_launch.py .
 ENTRYPOINT ["/app/venv/bin/python3", "/app/fgboot_launch.py"]

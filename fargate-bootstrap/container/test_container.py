@@ -26,4 +26,4 @@ def test_download():
     b = resources.s3_bucket("testbucket")
     zipcont = create_zip_in_memory({"boot.py": "print('hello from app')"})
     b("path/to/file.zip", zipcont)
-    fgboot_launch.main("s3://testbucket/path/to/file.zip")
+    fgboot_launch.main("testbucket", "path/to/file.zip")

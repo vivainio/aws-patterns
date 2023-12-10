@@ -16,14 +16,24 @@ def handler(event, context):
     subnets = os.environ["FGB_SUBNETS"].split(",")
     security_groups = os.environ["FGB_SECURITYGROUPS"].split(",")
     network_configuration = {
-        "awsvpcConfiguration": {
-            "subnets": subnets,
-            "securityGroups": security_groups
-        }
+        "awsvpcConfiguration": {"subnets": subnets, "securityGroups": security_groups}
+    }
+    
+    overrides = {
+        "containerOverrides": [
+            {
+                "name": os.environ["FGB_CONTAINERNAME"],
+                "environment": [
+                    {"name": "FGB_PATH", "value": "myapp.zip"},
+                    # Add more environment variables as needed
+                ],
+            }
+        ]
     }
     client.run_task(
         cluster=cluster,
         taskDefinition=taskdef,
         networkConfiguration=network_configuration,
         launchType="FARGATE",
+        overrides=overrides,
     )

@@ -7,6 +7,7 @@ import { aws_lambda_event_sources as lambdaEventSources } from 'aws-cdk-lib';
 import { aws_ecs as ecs } from 'aws-cdk-lib';
 import { aws_iam as iam } from 'aws-cdk-lib';
 import {aws_ec2 as ec2} from 'aws-cdk-lib';
+import {aws_logs as logs} from 'aws-cdk-lib';
 
 // hidden from git, myah myah
 import vpcConfig from './vpc-config';
@@ -55,7 +56,7 @@ export class FgBootStack extends cdk.Stack {
 
     const vpc = ec2.Vpc.fromVpcAttributes(this, 'ExistingVpc', {
       vpcId: vpcConfig.vpcId,
-      availabilityZones: ["eu-west-1a"]
+      availabilityZones: ["eu-west-1a", "eu-west-1b"]
     })
 
     // empty sg for the app in vpc
@@ -64,6 +65,8 @@ export class FgBootStack extends cdk.Stack {
       vpc
     })
 
+    // needed to download from ecr
+    //sg.addEgressRule(ec2.Peer.ipv4('0.0.0.0/0'), ec2.Port.tcp(443));
 
     const cluster = new ecs.Cluster(this, appNamePrefix + 'Cluster', {vpc: vpc});
     const executionRole = new iam.Role(this, 'TaskExecutionRole', {
@@ -84,11 +87,27 @@ export class FgBootStack extends cdk.Stack {
 
     })
 
-    // can reuse the same image for all the apps
-    const container = taskDef.addContainer( appNamePrefix + 'Container', {
-      image: ecs.ContainerImage.fromRegistry('fgbootimg')
+    const logGroup = new logs.LogGroup(this, appNamePrefix + "LogGroup", {
+      logGroupName: "/ecs/" + appNamePrefix
     })
 
+    // can reuse the same image for all the apps
+    const container = taskDef.addContainer( appNamePrefix + 'Container', {
+      image: ecs.ContainerImage.fromRegistry("public.ecr.aws/i4s7m2y3/fgboot:latest"),
+      environment: {
+        "FGB_APPBUCKET": bucket.bucketName
+      },
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: appNamePrefix,
+        logGroup: logGroup
+      })
+    })
+
+
+    ecsTaskRole.addToPolicy(new iam.PolicyStatement({
+      actions: ["logs:CreateLogStream", "logs:PutLogEvents"],
+      resources: [logGroup.logGroupArn, logGroup.logGroupArn + "/*"]
+    }))
 
     // lambda can run it
 
@@ -108,6 +127,9 @@ export class FgBootStack extends cdk.Stack {
     launcherLambda.addEnvironment("FGB_CLUSTER_NAME", cluster.clusterName)
     launcherLambda.addEnvironment("FGB_SUBNETS", vpcConfig.subnets)
     launcherLambda.addEnvironment("FGB_SECURITYGROUPS", sg.securityGroupId)
+    launcherLambda.addEnvironment("FGB_APPBUCKET", bucket.bucketName)
+    launcherLambda.addEnvironment("FGB_CONTAINERNAME", container.containerName)
+
 
     new cdk.CfnOutput(this, "TriggerJobQueue", {
       value: jobQueue.queueUrl,

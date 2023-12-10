@@ -28,6 +28,16 @@ def do_deploy(args):
     c("cdk deploy --profile dev")
 
 
+def do_ecrpush(args):
+    os.chdir("container")
+    c("aws ecr-public get-login-password --region us-east-1 --profile dev | docker login --username AWS --password-stdin public.ecr.aws/i4s7m2y3")
+    c("docker build -t fgboot .")
+    c("docker tag fgboot:latest public.ecr.aws/i4s7m2y3/fgboot:latest")
+    c("docker push public.ecr.aws/i4s7m2y3/fgboot:latest")
+
+
+
+
 def default():
     show_help()
 
