@@ -58,6 +58,13 @@ export class FgBootStack extends cdk.Stack {
       availabilityZones: ["eu-west-1a"]
     })
 
+    // empty sg for the app in vpc
+
+    const sg = new ec2.SecurityGroup(this, appNamePrefix+"Sg", {
+      vpc
+    })
+
+
     const cluster = new ecs.Cluster(this, appNamePrefix + 'Cluster', {vpc: vpc});
     const executionRole = new iam.Role(this, 'TaskExecutionRole', {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com")
@@ -89,7 +96,22 @@ export class FgBootStack extends cdk.Stack {
       actions: ["ecs:RunTask"],
       resources: [taskDef.taskDefinitionArn]
     }))
-    launcherLambda.addEnvironment("FGB_TASKDEF_ARN", taskDef.taskDefinitionArn)
 
+    lambdaExecutionRole.addToPolicy(new iam.PolicyStatement({
+      actions: ["iam:PassRole"],
+      resources: [executionRole.roleArn, ecsTaskRole.roleArn]
+    }))
+
+    lambdaExecutionRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
+
+    launcherLambda.addEnvironment("FGB_TASKDEF_ARN", taskDef.taskDefinitionArn)
+    launcherLambda.addEnvironment("FGB_CLUSTER_NAME", cluster.clusterName)
+    launcherLambda.addEnvironment("FGB_SUBNETS", vpcConfig.subnets)
+    launcherLambda.addEnvironment("FGB_SECURITYGROUPS", sg.securityGroupId)
+
+    new cdk.CfnOutput(this, "TriggerJobQueue", {
+      value: jobQueue.queueUrl,
+      description: "Queue to add the job start requests to"
+    })
   }
 }

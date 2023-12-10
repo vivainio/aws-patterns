@@ -23,6 +23,11 @@ def do_format(args):
     c("ruff format .")
 
 
+def do_deploy(args):
+    os.chdir("cdk")
+    c("cdk deploy --profile dev")
+
+
 def default():
     show_help()
 
