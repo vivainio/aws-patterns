@@ -25,7 +25,9 @@ I
 {
     "fgboot": {
         "path": "path/to/app.zip",
-        "batchkey": "somekey"
+        "batchkey": "somekey",
+        "cpu": 512,
+        "ram": 1024
     },
     "otherstuff": [1,2],
     "evenmorestuff": ["foo", "bar"]
